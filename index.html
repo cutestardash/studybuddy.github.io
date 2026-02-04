@@ -11,7 +11,8 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    font-family: "Comic Sans MS", cursive;
+    font-family: "Arial", sans-serif;
+    font-weight: bold;
   }
 
   canvas {
@@ -22,9 +23,34 @@
 
   .hint {
     position: fixed;
-    bottom: 15px;
+    bottom: 60px;
     font-size: 14px;
     opacity: 0.8;
+    text-align: center;
+    width: 100%;
+    font-weight: bold;
+  }
+
+  .credits {
+    position: fixed;
+    bottom: 35px;
+    font-size: 12px;
+    opacity: 0.7;
+    text-align: center;
+    width: 100%;
+    font-weight: bold;
+  }
+
+  .leaderboard {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.9);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: left;
   }
 </style>
 </head>
@@ -32,17 +58,24 @@
 
 <canvas id="game" width="480" height="480"></canvas>
 <div class="hint">Move with ⬅️⬆️⬇️➡️ | Collect ⭐ | Avoid 😈</div>
+<div class="credits">Made by Joshua | Instagram: @jshctz.mp3</div>
+<div class="leaderboard" id="leaderboard"></div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const leaderboardDiv = document.getElementById("leaderboard");
 
-let player = { x: 240, y: 240, r: 14, speed: 4 };
+let player = { x: 240, y: 240, r: 14, speed: 4, color: "#6bcfff" };
 let stars = [];
 let enemies = [];
+let balls = []; // collected balls
 let score = 0;
 let level = 1;
 let keys = {};
+let nextBallScore = 10;
+let ballColors = ["#ff69b4", "#6a5acd", "#ff8c00", "#00fa9a", "#ff1493", "#1e90ff", "#ffa500", "#00ffff", "#adff2f", "#ff4500"];
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard") || "[]");
 
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
@@ -78,28 +111,50 @@ function update() {
   if (keys["ArrowLeft"]) player.x -= player.speed;
   if (keys["ArrowRight"]) player.x += player.speed;
 
-  player.x = Math.max(14, Math.min(466, player.x));
-  player.y = Math.max(14, Math.min(466, player.y));
+  player.x = Math.max(player.r, Math.min(480 - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(480 - player.r, player.y));
 
+  // collect stars
   stars.forEach((s, i) => {
     if (distance(player, s) < player.r + s.r) {
       stars.splice(i, 1);
       score++;
       spawnStar();
 
+      // increase level every 5 points
       if (score % 5 === 0) {
         level++;
         spawnEnemy();
       }
+
+      // collect new ball every 10 points
+      if (score >= nextBallScore && nextBallScore <= 100) {
+        let colorIndex = Math.floor(nextBallScore / 10) - 1;
+        let newBall = { color: ballColors[colorIndex % ballColors.length] };
+        balls.push(newBall);
+        player.color = newBall.color; // equip new ball
+        alert(`🎉 You unlocked a new ball! Color: ${newBall.color}`);
+        nextBallScore += 10;
+      }
+
+      // leaderboard at 100 points
+      if (score >= 100) {
+        let name = prompt("🏆 You reached 100! Enter your name for the leaderboard:");
+        if (name) {
+          leaderboard.push({ name: name, score: score });
+          localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        }
+      }
     }
   });
 
+  // enemies
   enemies.forEach(e => {
     e.x += e.vx;
     e.y += e.vy;
 
-    if (e.x < 14 || e.x > 466) e.vx *= -1;
-    if (e.y < 14 || e.y > 466) e.vy *= -1;
+    if (e.x < e.r || e.x > 480 - e.r) e.vx *= -1;
+    if (e.y < e.r || e.y > 480 - e.r) e.vy *= -1;
 
     if (distance(player, e) < player.r + e.r) {
       alert("💀 Game Over!\nScore: " + score);
@@ -124,18 +179,36 @@ function draw() {
   // enemies
   enemies.forEach(e => drawCircle(e.x, e.y, e.r, "#ff6b6b"));
 
-  // player
-  drawCircle(player.x, player.y, player.r, "#6bcfff");
+  // player with equipped ball color
+  drawCircle(player.x, player.y, player.r, player.color);
 
   ctx.fillStyle = "#444";
-  ctx.font = "16px Comic Sans MS";
+  ctx.font = "bold 16px Arial";
   ctx.fillText("⭐ Score: " + score, 15, 25);
   ctx.fillText("🌸 Level: " + level, 370, 25);
+
+  // display leaderboard in canvas (optional)
+  let lbY = 50;
+  ctx.fillStyle = "#000";
+  ctx.font = "bold 12px Arial";
+  leaderboard.forEach(entry => {
+    ctx.fillText(`${entry.name}: ${entry.score}`, 350, lbY);
+    lbY += 15;
+  });
+}
+
+function updateLeaderboardDiv() {
+  if (leaderboard.length === 0) return;
+  leaderboardDiv.innerHTML = "<b>Leaderboard</b><br>" + leaderboard
+    .sort((a,b) => b.score - a.score)
+    .map(e => `${e.name}: ${e.score}`)
+    .join("<br>");
 }
 
 function loop() {
   update();
   draw();
+  updateLeaderboardDiv();
   requestAnimationFrame(loop);
 }
 
@@ -144,3 +217,4 @@ loop();
 
 </body>
 </html>
+
