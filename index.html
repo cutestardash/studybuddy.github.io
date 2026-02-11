@@ -1,300 +1,980 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>⭐ Cute Star Dash ⭐</title>
-
-<style>
-/* ---------- GLOBAL ---------- */
-body{
-  margin:0;
-  font-family: Arial, sans-serif;
-  font-weight:bold;
-  background: radial-gradient(circle at top, #ffddff, #cceeff);
-  overflow:hidden;
-  touch-action:none;
-}
-canvas{
-  display:block;
-  margin:auto;
-  margin-top:90px;
-  background:#fff;
-  border-radius:24px;
-  box-shadow:0 25px 50px rgba(0,0,0,0.3);
-}
-
-/* ---------- UPDATE BANNER ---------- */
-.update-banner{
-  position:fixed;
-  top:0;
-  width:100%;
-  text-align:center;
-  padding:14px;
-  font-size:22px;
-  letter-spacing:2px;
-  background: linear-gradient(90deg,#ff00cc,#ffdd00,#00ffcc,#ff00cc);
-  color:white;
-  text-shadow:2px 2px #000;
-  animation: shimmer 4s linear infinite;
-}
-@keyframes shimmer{
-  0%{background-position:0%}
-  100%{background-position:200%}
-}
-
-/* ---------- TOP BUTTONS ---------- */
-.topUI{
-  position:fixed;
-  top:55px;
-  right:10px;
-}
-.topUI button{
-  padding:8px 14px;
-  border-radius:16px;
-  border:none;
-  background:#6bcfff;
-  color:white;
-  margin-left:5px;
-}
-
-/* ---------- START SCREEN ---------- */
-.startScreen{
-  position:fixed;
-  inset:0;
-  background:linear-gradient(#ffccff,#ccf2ff);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:10;
-}
-.startScreen input, .startScreen button{
-  padding:12px;
-  border-radius:16px;
-  border:none;
-  margin:6px;
-  font-size:16px;
-  font-weight:bold;
-}
-
-/* ---------- JOYSTICK ---------- */
-.controls{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  display:grid;
-  grid-template-columns:60px 60px 60px;
-  gap:8px;
-}
-.controls button{
-  width:60px;
-  height:60px;
-  border-radius:50%;
-  border:none;
-  font-size:22px;
-  background:#6bcfff;
-}
-
-/* ---------- MODALS ---------- */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.6);
-  display:none;
-  justify-content:center;
-  align-items:center;
-}
-.box{
-  background:white;
-  width:350px;
-  padding:16px;
-  border-radius:22px;
-  text-align:center;
-}
-.shopBtn{
-  margin:6px;
-  padding:8px 12px;
-  border-radius:14px;
-  border:none;
-  background:#ffb347;
-}
-
-/* ---------- CREDITS ---------- */
-.credits{
-  position:fixed;
-  bottom:10px;
-  width:100%;
-  text-align:center;
-  color:#ff1493;
-  font-size:18px;
-  text-shadow:2px 2px #fff;
-}
-</style>
-</head>
-
-<body>
-<div class="update-banner">🌟 NEW UPDATE!!! 🌟</div>
-
-<div class="topUI">
-  <button onclick="toggleInventory()">🎒 Inventory</button>
-  <button onclick="toggleStore()">🛒 Store</button>
-</div>
-
-<div class="startScreen" id="startScreen">
-  <h2>⭐ Cute Star Dash ⭐</h2>
-  <input id="playerName" placeholder="Enter your name">
-  <button onclick="startGame()">START</button>
-</div>
-
-<canvas id="game" width="480" height="480"></canvas>
-
-<div class="controls">
-  <div></div>
-  <button onpointerdown="keys.up=true" onpointerup="keys.up=false">⬆️</button>
-  <div></div>
-  <button onpointerdown="keys.left=true" onpointerup="keys.left=false">⬅️</button>
-  <button onpointerdown="keys.down=true" onpointerup="keys.down=false">⬇️</button>
-  <button onpointerdown="keys.right=true" onpointerup="keys.right=false">➡️</button>
-</div>
-
-<!-- INVENTORY -->
-<div class="modal" id="inventory">
-  <div class="box">
-    <h3>🎒 Inventory</h3>
-    <p id="money"></p>
-    <p>Owned Balls:</p>
-    <div id="ballList"></div>
-    <br>
-    <button onclick="toggleInventory()">Close</button>
-  </div>
-</div>
-
-<!-- STORE -->
-<div class="modal" id="store">
-  <div class="box">
-    <h3>🛒 Dash Store</h3>
-    <p id="storeMoney"></p>
-
-    <h4>💎 Subscriptions</h4>
-    <button class="shopBtn" onclick="buySub('music')">🎵 Music Pass (50)</button>
-    <button class="shopBtn" onclick="buySub('ultimate')">👑 Ultimate Pass (200)</button>
-
-    <h4>⚽ Balls</h4>
-    <button class="shopBtn" onclick="buyBall('galaxy',100)">🌌 Galaxy Ball (100)</button>
-    <button class="shopBtn" onclick="buyBall('rainbow',75)">🌈 Rainbow Ball (75)</button>
-    <button class="shopBtn" onclick="buyBall('neon',50)">💥 Neon Ball (50)</button>
-
-    <br><br>
-    <button onclick="toggleStore()">Close</button>
-  </div>
-</div>
-
-<div class="credits">Created by Joshua | IG: @jshctz.mp3</div>
-
-<audio id="music" loop>
-  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
-</audio>
-
-<script>
-/* ---------- DATA ---------- */
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
-let keys={up:false,down:false,left:false,right:false};
-let started=false;
-
-let player={x:240,y:240,r:14,speed:4,ball:"basic"};
-let stars=[],enemies=[];
-let score=0;
-
-let dashBucks=parseInt(localStorage.getItem("dashBucks")||"0");
-let ownedBalls=JSON.parse(localStorage.getItem("balls")||'["basic"]');
-let subs=JSON.parse(localStorage.getItem("subs")||'{}');
-
-/* ---------- START ---------- */
-function startGame(){
-  if(!document.getElementById("playerName").value)return alert("Enter name");
-  document.getElementById("startScreen").style.display="none";
-  started=true;
-  document.getElementById("music").play();
-}
-
-/* ---------- STORE ---------- */
-function buySub(type){
-  if(type==="music" && dashBucks>=50){
-    dashBucks-=50; subs.music=true;
-    alert("🎵 Music Pass unlocked!");
-  }
-  if(type==="ultimate" && dashBucks>=200){
-    dashBucks-=200; subs.ultimate=true;
-    alert("👑 Ultimate Pass unlocked!");
-  }
-  save();
-}
-function buyBall(ball,cost){
-  if(dashBucks>=cost && !ownedBalls.includes(ball)){
-    dashBucks-=cost;
-    ownedBalls.push(ball);
-    player.ball=ball;
-    alert(ball.toUpperCase()+" unlocked!");
-    save();
-  }
-}
-
-/* ---------- UI ---------- */
-function toggleInventory(){
-  inventory.style.display=inventory.style.display==="flex"?"none":"flex";
-  money.textContent="Dash Bucks: "+dashBucks;
-  ballList.innerHTML=ownedBalls.join(" • ");
-}
-function toggleStore(){
-  store.style.display=store.style.display==="flex"?"none":"flex";
-  storeMoney.textContent="Dash Bucks: "+dashBucks;
-}
-
-/* ---------- GAME ---------- */
-function spawnStar(){stars.push({x:Math.random()*440+20,y:Math.random()*440+20,r:8});}
-function spawnEnemy(){enemies.push({x:Math.random()*440+20,y:Math.random()*440+20,r:14,vx:2,vy:2});}
-spawnStar(); spawnEnemy();
-
-function update(){
-  if(!started)return;
-  if(keys.up)player.y-=player.speed;
-  if(keys.down)player.y+=player.speed;
-  if(keys.left)player.x-=player.speed;
-  if(keys.right)player.x+=player.speed;
-
-  stars.forEach((s,i)=>{
-    if(Math.hypot(player.x-s.x,player.y-s.y)<player.r+s.r){
-      stars.splice(i,1);
-      score++;
-      dashBucks+=subs.ultimate?2:1;
-      spawnStar();
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Study Buddy — Chill Focus Timer</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#0c1a2b;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.12);
+      --text:#eaf2ff;
+      --muted: rgba(234,242,255,.7);
+      --good:#61ffb3;
+      --warn:#ffd36a;
+      --bad:#ff6b8a;
+      --accent:#7aa8ff;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
     }
-  });
-}
-function draw(){
-  ctx.clearRect(0,0,480,480);
-  stars.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fillStyle="#ffd700";ctx.fill();});
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,player.r,0,7);
-  ctx.fillStyle=player.ball==="galaxy"?"#b84cff":
-               player.ball==="rainbow"?"#ff69b4":
-               player.ball==="neon"?"#00ffcc":"#6bcfff";
-  ctx.fill();
-  ctx.fillStyle="#333";
-  ctx.fillText("⭐ "+score,10,20);
-  ctx.fillText("💰 "+dashBucks,10,40);
-}
-function loop(){update();draw();requestAnimationFrame(loop);}
-loop();
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      min-height:100vh;
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(122,168,255,.18), transparent 60%),
+        radial-gradient(800px 500px at 80% 30%, rgba(97,255,179,.14), transparent 55%),
+        radial-gradient(700px 450px at 50% 90%, rgba(255,107,138,.12), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+    }
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+    header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin: 8px 0 16px;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    h1{
+      margin:0;
+      font-size: 22px;
+      letter-spacing:.2px;
+    }
+    .subtitle{color:var(--muted); font-size:13px}
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:10px 12px;
+      border-radius:999px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      border:1px solid rgba(255,255,255,.10);
+      font-size:13px;
+      color:var(--muted);
+      user-select:none;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: var(--good);
+      box-shadow: 0 0 18px rgba(97,255,179,.6);
+    }
 
-/* ---------- SAVE ---------- */
-function save(){
-  localStorage.setItem("dashBucks",dashBucks);
-  localStorage.setItem("balls",JSON.stringify(ownedBalls));
-  localStorage.setItem("subs",JSON.stringify(subs));
-}
-document.addEventListener("contextmenu",e=>e.preventDefault());
-</script>
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    .card{
+      background: var(--card);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      padding: 14px;
+    }
+
+    .timerTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .now{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .now .label{color:var(--muted); font-size:12px}
+    .now .subject{
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .bigTime{
+      font-variant-numeric: tabular-nums;
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing:1px;
+      margin: 8px 0 10px;
+    }
+
+    .progress{
+      width:100%;
+      height:12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(122,168,255,.95), rgba(97,255,179,.9));
+      border-radius:999px;
+      transition: width .3s ease;
+    }
+    .miniRow{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:8px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .btnRow{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top: 12px;
+    }
+    button{
+      border:none;
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight:700;
+      color: var(--text);
+      background: var(--card2);
+      border:1px solid rgba(255,255,255,.14);
+      transition: transform .06s ease, background .2s ease;
+    }
+    button:hover{background: rgba(255,255,255,.16)}
+    button:active{transform: scale(.98)}
+    .primary{background: rgba(122,168,255,.28)}
+    .danger{background: rgba(255,107,138,.22)}
+    .ghost{
+      background: transparent;
+      border:1px dashed rgba(255,255,255,.22);
+      color: var(--muted);
+      font-weight:700;
+    }
+
+    .sideGrid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+
+    .sectionTitle{
+      margin:0 0 10px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+
+    .scheduleList{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height: 240px;
+      overflow:auto;
+      padding-right: 6px;
+    }
+    .item{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .item strong{font-size:13px}
+    .item span{color:var(--muted); font-size:12px}
+    .item.active{
+      outline:2px solid rgba(97,255,179,.35);
+      background: rgba(97,255,179,.07);
+    }
+
+    .formRow{
+      display:grid;
+      grid-template-columns: 1.2fr .7fr .7fr;
+      gap:8px;
+    }
+    @media (max-width: 520px){
+      .formRow{grid-template-columns: 1fr 1fr}
+      .formRow .full{grid-column: 1 / -1}
+    }
+    input, select{
+      width:100%;
+      padding:10px 10px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline:none;
+    }
+    input::placeholder{color: rgba(234,242,255,.45)}
+    .hint{color:var(--muted); font-size:12px; margin-top:8px}
+
+    .chat{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      height: 330px;
+    }
+    .chatLog{
+      flex:1;
+      overflow:auto;
+      padding-right:6px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .msg{
+      max-width: 92%;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      line-height:1.35;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    .me{align-self:flex-end; background: rgba(122,168,255,.12)}
+    .buddy{align-self:flex-start}
+    .chatSend{
+      display:flex; gap:8px;
+    }
+    .chatSend input{flex:1}
+    .tagRow{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .tag{
+      padding:7px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .tag:hover{background: rgba(255,255,255,.10)}
+
+    .musicRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .slider{
+      display:flex; align-items:center; gap:10px;
+      width: 100%;
+    }
+    .slider input[type="range"]{width: 100%;}
+    .small{font-size:12px; color: var(--muted)}
+    .badge{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--muted);
+      font-size:12px;
+    }
+    .pulse{
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{opacity:.7}
+      50%{opacity:1}
+    }
+    footer{
+      margin-top: 14px;
+      color: rgba(234,242,255,.5);
+      font-size: 12px;
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Study Buddy ✨</h1>
+        <div class="subtitle">A chill focus timer + breaks + “buddy” chat + lofi vibes.</div>
+      </div>
+      <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Ready</span></div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: TIMER + CHAT -->
+      <div class="card">
+        <div class="timerTop">
+          <div class="now">
+            <div class="label" id="phaseLabel">Up next</div>
+            <div class="subject" id="nowSubject">Add a subject below 👇</div>
+            <div class="small" id="nextLine">Next: —</div>
+          </div>
+          <div class="badge" id="focusBadge">Mode: Chill Focus</div>
+        </div>
+
+        <div class="bigTime" id="timeLeft">00:00</div>
+        <div class="progress" aria-label="Progress bar">
+          <div class="bar" id="bar"></div>
+        </div>
+        <div class="miniRow">
+          <div id="elapsed">Elapsed: 00:00</div>
+          <div id="total">Total: 00:00</div>
+        </div>
+
+        <div class="btnRow">
+          <button class="primary" id="startBtn">Start</button>
+          <button id="pauseBtn">Pause</button>
+          <button class="ghost" id="skipBtn">Skip</button>
+          <button class="danger" id="resetBtn">Reset</button>
+          <button class="ghost" id="toggleAutoBtn" title="Auto-continue to next session">Auto: ON</button>
+        </div>
+
+        <div style="height:14px"></div>
+
+        <div class="card" style="padding:12px; background: rgba(0,0,0,.12);">
+          <div class="sectionTitle">Study Buddy Chat</div>
+
+          <div class="tagRow" style="margin-bottom:10px">
+            <div class="tag" data-preset="Give me a 3-step plan for this session.">3-step plan</div>
+            <div class="tag" data-preset="Quiz me quickly (5 questions) on my current subject.">Quick quiz</div>
+            <div class="tag" data-preset="Explain the topic to me like I'm in grade 7.">Explain simply</div>
+            <div class="tag" data-preset="Motivate me in one short line.">Motivate</div>
+          </div>
+
+          <div class="chat">
+            <div class="chatLog" id="chatLog"></div>
+            <div class="chatSend">
+              <input id="chatInput" type="text" placeholder="Type to your study buddy… (no internet, but it can help you plan + study smarter!)"/>
+              <button id="sendBtn">Send</button>
+            </div>
+            <div class="hint">Tip: Tell it your subject + what you’re stuck on. It’ll reply with a plan, quiz, or notes.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SCHEDULE + MUSIC -->
+      <div class="sideGrid">
+        <div class="card">
+          <div class="sectionTitle">Your Schedule</div>
+
+          <div class="formRow">
+            <input class="full" id="subjName" placeholder="Subject (e.g. Maths, Afrikaans, Science)" />
+            <input id="subjMins" type="number" min="1" value="30" />
+            <select id="subjType">
+              <option value="study">Study</option>
+              <option value="break">Break</option>
+            </select>
+          </div>
+
+          <div class="btnRow" style="margin-top:10px">
+            <button id="addBtn" class="primary">Add</button>
+            <button id="addBreakBtn">+ 10min Break</button>
+            <button id="clearBtn" class="danger">Clear All</button>
+          </div>
+
+          <div class="hint">
+            Add subjects + breaks. The timer will go in order and show how much time you have left.
+          </div>
+
+          <div style="height:10px"></div>
+          <div class="scheduleList" id="scheduleList"></div>
+        </div>
+
+        <div class="card">
+          <div class="sectionTitle">Lofi / Relaxing Music</div>
+          <div class="musicRow">
+            <button id="musicBtn" class="primary">Play</button>
+            <span class="badge pulse" id="musicStatus">Music: OFF</span>
+          </div>
+
+          <div style="height:10px"></div>
+          <div class="slider">
+            <span class="small">Volume</span>
+            <input id="vol" type="range" min="0" max="1" step="0.01" value="0.25"/>
+          </div>
+
+          <div class="hint">
+            Some browsers block autoplay. Press Play once and you’re good.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Made for chill studying. You’ve got this 🫶
+    </footer>
+  </div>
+
+  <script>
+    // --------- Utils ----------
+    const $ = (id) => document.getElementById(id);
+    function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function fmt(secs){
+      secs = Math.max(0, Math.floor(secs));
+      const m = Math.floor(secs/60);
+      const s = secs % 60;
+      return `${pad(m)}:${pad(s)}`;
+    }
+
+    // --------- State ----------
+    let schedule = [
+      { name: "Maths", mins: 25, type: "study" },
+      { name: "Break", mins: 10, type: "break" },
+      { name: "Science", mins: 25, type: "study" }
+    ];
+
+    let index = 0;
+    let running = false;
+    let autoNext = true;
+    let sessionTotal = 0;   // seconds
+    let sessionLeft  = 0;   // seconds
+    let tickHandle = null;
+    let startedAt = null;   // Date.now
+    let pausedAt = null;
+
+    // --------- Load / Save ----------
+    const STORAGE_KEY = "study_buddy_v1";
+    function save(){
+      const data = { schedule, index, running, autoNext, sessionLeft, sessionTotal };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return;
+        const d = JSON.parse(raw);
+        if(Array.isArray(d.schedule)) schedule = d.schedule;
+        if(Number.isInteger(d.index)) index = clamp(d.index, 0, Math.max(0, schedule.length-1));
+        if(typeof d.autoNext === "boolean") autoNext = d.autoNext;
+        // don't auto-run after refresh; keep it paused
+        running = false;
+
+        // restore current session time if possible
+        const cur = schedule[index];
+        if(cur){
+          sessionTotal = (cur.mins||1) * 60;
+          sessionLeft = clamp(d.sessionLeft ?? sessionTotal, 0, sessionTotal);
+        }
+      }catch(e){}
+    }
+
+    // --------- UI Helpers ----------
+    function setStatus(text, color){
+      $("statusText").textContent = text;
+      const dot = $("statusDot");
+      dot.style.background = color;
+      dot.style.boxShadow = `0 0 18px ${color}88`;
+    }
+
+    function current(){
+      return schedule[index] || null;
+    }
+    function next(){
+      return schedule[index+1] || null;
+    }
+
+    function renderSchedule(){
+      const list = $("scheduleList");
+      list.innerHTML = "";
+      schedule.forEach((it, i)=>{
+        const div = document.createElement("div");
+        div.className = "item" + (i===index ? " active":"");
+        const left = document.createElement("div");
+        const right = document.createElement("div");
+        left.innerHTML = `<strong>${it.type==="break" ? "☕ " : "📚 "}${escapeHtml(it.name)}</strong><br><span>${it.type.toUpperCase()}</span>`;
+        right.innerHTML = `<strong>${it.mins} min</strong><br><span style="cursor:pointer; text-decoration:underline;" title="Click to jump">Jump</span>`;
+        right.addEventListener("click", ()=>{
+          jumpTo(i);
+        });
+        div.appendChild(left);
+        div.appendChild(right);
+        list.appendChild(div);
+      });
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function syncSessionFromIndex(){
+      const cur = current();
+      if(!cur){
+        $("nowSubject").textContent = "No sessions — add a subject 👇";
+        $("phaseLabel").textContent = "Up next";
+        $("nextLine").textContent = "Next: —";
+        $("timeLeft").textContent = "00:00";
+        $("elapsed").textContent = "Elapsed: 00:00";
+        $("total").textContent = "Total: 00:00";
+        $("bar").style.width = "0%";
+        setStatus("Ready", "#61ffb3");
+        return;
+      }
+      sessionTotal = (cur.mins || 1) * 60;
+      sessionLeft = sessionTotal;
+
+      $("phaseLabel").textContent = cur.type === "break" ? "Break time" : "Focus time";
+      $("focusBadge").textContent = `Mode: ${cur.type === "break" ? "Break" : "Chill Focus"}`;
+      $("nowSubject").textContent = cur.type === "break" ? (cur.name || "Break") : cur.name;
+      $("total").textContent = `Total: ${fmt(sessionTotal)}`;
+      $("timeLeft").textContent = fmt(sessionLeft);
+      $("elapsed").textContent = `Elapsed: ${fmt(0)}`;
+      $("bar").style.width = "0%";
+
+      const nx = next();
+      $("nextLine").textContent = nx ? `Next: ${nx.type==="break" ? "☕ " : "📚 "}${nx.name} (${nx.mins} min)` : "Next: done 🎉";
+
+      setStatus(cur.type==="break" ? "Break" : "Focus", cur.type==="break" ? "#ffd36a" : "#61ffb3");
+      renderSchedule();
+      save();
+    }
+
+    function updateProgress(){
+      const done = sessionTotal - sessionLeft;
+      $("timeLeft").textContent = fmt(sessionLeft);
+      $("elapsed").textContent = `Elapsed: ${fmt(done)}`;
+      $("bar").style.width = `${(done / sessionTotal) * 100}%`;
+    }
+
+    function start(){
+      const cur = current();
+      if(!cur) return;
+
+      if(!running){
+        running = true;
+        $("startBtn").textContent = "Running…";
+        setStatus(cur.type==="break" ? "Break running" : "Focus running", cur.type==="break" ? "#ffd36a" : "#61ffb3");
+
+        startedAt = Date.now();
+        tickHandle = setInterval(tick, 250);
+        save();
+      }
+    }
+
+    function pause(){
+      if(!running) return;
+      running = false;
+      clearInterval(tickHandle);
+      tickHandle = null;
+      pausedAt = Date.now();
+      $("startBtn").textContent = "Start";
+      setStatus("Paused", "#7aa8ff");
+      save();
+    }
+
+    function reset(){
+      pause();
+      syncSessionFromIndex();
+      addBuddy(`Reset done. When you're ready, press Start.`);
+    }
+
+    function skip(){
+      pause();
+      goNext(true);
+    }
+
+    function goNext(fromSkip=false){
+      const prev = current();
+      index++;
+      if(index >= schedule.length){
+        index = schedule.length - 1;
+        // End
+        $("phaseLabel").textContent = "All done";
+        $("nowSubject").textContent = "You finished your schedule 🎉";
+        $("nextLine").textContent = "Next: —";
+        $("timeLeft").textContent = "00:00";
+        $("elapsed").textContent = "Elapsed: 00:00";
+        $("total").textContent = "Total: 00:00";
+        $("bar").style.width = "100%";
+        setStatus("Done!", "#61ffb3");
+        $("focusBadge").textContent = "Mode: Proud of you";
+        renderSchedule();
+        addBuddy(fromSkip ? "Skipped! Schedule finished ✅" : "Session complete! Schedule finished ✅");
+        save();
+        return;
+      }
+      syncSessionFromIndex();
+      addBuddy(fromSkip ? "Skipped. On to the next session!" : "Nice! Next session starting.");
+      if(autoNext) start();
+    }
+
+    function jumpTo(i){
+      i = clamp(i, 0, schedule.length-1);
+      pause();
+      index = i;
+      syncSessionFromIndex();
+      addBuddy(`Jumped to: ${current().name} (${current().mins} min).`);
+    }
+
+    function tick(){
+      if(!running) return;
+      const now = Date.now();
+      const elapsed = (now - startedAt) / 1000;
+
+      // Decrease left smoothly
+      sessionLeft = clamp(sessionTotal - elapsed, 0, sessionTotal);
+      updateProgress();
+
+      if(sessionLeft <= 0){
+        pause();
+        // Little notification sound
+        try { beep(740, 0.08); beep(520, 0.08, 110); } catch(e) {}
+        addBuddy(`Time! ✅ ${current()?.type==="break" ? "Break" : "Focus"} finished.`);
+        if(autoNext) goNext(false);
+        else setStatus("Time's up (paused)", "#ffd36a");
+      }
+    }
+
+    function beep(freq=600, dur=0.07, delay=0){
+      // simple WebAudio beep
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      o.connect(g);
+      g.connect(ctx.destination);
+      g.gain.value = 0.06;
+      const t0 = ctx.currentTime + (delay/1000);
+      o.start(t0);
+      o.stop(t0 + dur);
+      setTimeout(()=>ctx.close(), (delay + dur*1000 + 120));
+    }
+
+    // --------- Schedule controls ----------
+    function addItem(name, mins, type){
+      name = (name || "").trim();
+      if(!name) name = type==="break" ? "Break" : "Study";
+      mins = clamp(parseInt(mins || 1, 10), 1, 999);
+      schedule.push({ name, mins, type });
+      if(schedule.length === 1){
+        index = 0;
+        syncSessionFromIndex();
+      } else {
+        renderSchedule();
+        save();
+      }
+    }
+
+    function clearAll(){
+      pause();
+      schedule = [];
+      index = 0;
+      sessionTotal = 0;
+      sessionLeft = 0;
+      renderSchedule();
+      syncSessionFromIndex();
+      addBuddy("Cleared. Add your subjects to build a new schedule ✨");
+      save();
+    }
+
+    // --------- Buddy Chat (local, rule-based) ----------
+    function addMsg(text, who="buddy"){
+      const log = $("chatLog");
+      const div = document.createElement("div");
+      div.className = "msg " + (who==="me" ? "me" : "buddy");
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+    function addBuddy(text){ addMsg(text, "buddy"); }
+    function addMe(text){ addMsg(text, "me"); }
+
+    function buddyReply(userText){
+      const cur = current();
+      const subject = cur ? cur.name : "your subject";
+      const t = userText.toLowerCase();
+
+      // super simple “AI-ish” replies (offline)
+      if(t.includes("3-step") || t.includes("plan")){
+        return `Okay! 3-step plan for ${subject}:\n1) Warm-up: write what you already know (2 min).\n2) Main grind: do 3 key questions/notes (focus, no switching tabs).\n3) Check: mark mistakes + write 2 things to remember.\nBonus: if you get stuck, write the exact part that confuses you.`;
+      }
+      if(t.includes("quiz") || t.includes("test me") || t.includes("questions")){
+        return `Quick quiz idea for ${subject}:\n- Write 5 questions you *might* get in a test.\n- Answer them without notes.\n- Then check notes and fix.\nIf you tell me the topic (like “fractions” or “photosynthesis”), I’ll generate better questions.`;
+      }
+      if(t.includes("explain") || t.includes("grade") || t.includes("simple")){
+        return `Explain-like-I’m-in-grade-7 mode ✅\nTell me the exact topic in ${subject} (one sentence). Then I’ll explain it in a super simple way + give an example.`;
+      }
+      if(t.includes("motivate") || t.includes("encourage") || t.includes("quote")){
+        const lines = [
+          "Small steps. Big results. Keep going.",
+          "Do 5 minutes. Then decide. (You’ll usually continue.)",
+          "Future-you is literally cheering for you right now.",
+          "Focus now, relax later. You’ve got this.",
+        ];
+        return lines[Math.floor(Math.random()*lines.length)];
+      }
+      if(t.includes("help") || t.includes("stuck")){
+        return `Tell me what part you’re stuck on in ${subject}:\n- what the question/topic is\n- what you *tried*\n- where it goes wrong\nThen I’ll help you fix it.`;
+      }
+
+      return `Got you. For ${subject}, what do you want right now?\nA) 3-step plan\nB) quick quiz\nC) explain simply\nD) motivation\nJust type A/B/C/D (or tell me the topic).`;
+    }
+
+    // --------- Lofi Audio (generated, no copyright) ----------
+    let audioCtx = null;
+    let master = null;
+    let playing = false;
+    let seqTimer = null;
+
+    function ensureAudio(){
+      if(audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      master = audioCtx.createGain();
+      master.gain.value = parseFloat($("vol").value);
+      master.connect(audioCtx.destination);
+    }
+
+    function playLofi(){
+      ensureAudio();
+      if(audioCtx.state === "suspended") audioCtx.resume();
+
+      if(playing) return;
+      playing = true;
+      $("musicBtn").textContent = "Pause";
+      $("musicStatus").textContent = "Music: ON";
+
+      // soft “lofi-ish” loop: chord pad + gentle kick + hat
+      const bpm = 78;
+      const beat = 60 / bpm;
+      let step = 0;
+
+      const chordProg = [
+        [261.63, 329.63, 392.00],  // C
+        [220.00, 277.18, 329.63],  // Am
+        [174.61, 220.00, 261.63],  // F
+        [196.00, 246.94, 293.66],  // G
+      ];
+
+      function scheduleStep(){
+        if(!playing) return;
+        const t0 = audioCtx.currentTime + 0.02;
+
+        // chord pad every 2 beats
+        if(step % 2 === 0){
+          const chord = chordProg[Math.floor((step/2) % chordProg.length)];
+          chord.forEach((f, i)=> padTone(f, t0, 0.9, 0.012 + i*0.004));
+        }
+
+        // kick on 1 and 3
+        if(step % 4 === 0 || step % 4 === 2){
+          kick(t0, 0.10);
+        }
+
+        // hat every beat
+        hat(t0, 0.03, 0.02);
+
+        step++;
+      }
+
+      seqTimer = setInterval(scheduleStep, beat * 1000);
+      scheduleStep();
+    }
+
+    function stopLofi(){
+      if(!playing) return;
+      playing = false;
+      clearInterval(seqTimer);
+      seqTimer = null;
+      $("musicBtn").textContent = "Play";
+      $("musicStatus").textContent = "Music: OFF";
+    }
+
+    function padTone(freq, when, dur, detune=0){
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      o.type = "triangle";
+      o.frequency.value = freq;
+      o.detune.value = detune * 100;
+
+      filter.type = "lowpass";
+      filter.frequency.value = 900;
+      filter.Q.value = 0.6;
+
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.08, when + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+
+      o.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+
+      o.start(when);
+      o.stop(when + dur + 0.05);
+    }
+
+    function kick(when, dur){
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+
+      o.type = "sine";
+      o.frequency.setValueAtTime(120, when);
+      o.frequency.exponentialRampToValueAtTime(55, when + dur);
+
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.25, when + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+
+      o.connect(g);
+      g.connect(master);
+
+      o.start(when);
+      o.stop(when + dur + 0.05);
+    }
+
+    function hat(when, dur, level){
+      // white noise hat
+      const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++){
+        data[i] = (Math.random()*2 - 1) * (1 - i/bufferSize);
+      }
+
+      const src = audioCtx.createBufferSource();
+      const g = audioCtx.createGain();
+      const hp = audioCtx.createBiquadFilter();
+
+      hp.type = "highpass";
+      hp.frequency.value = 6500;
+
+      src.buffer = buffer;
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(level, when + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+
+      src.connect(hp);
+      hp.connect(g);
+      g.connect(master);
+
+      src.start(when);
+      src.stop(when + dur + 0.02);
+    }
+
+    // --------- Events ----------
+    $("startBtn").addEventListener("click", ()=>{
+      if(running) return;
+      // if schedule empty, make a default
+      if(schedule.length === 0){
+        schedule = [
+          { name: "Study", mins: 25, type: "study" },
+          { name: "Break", mins: 10, type: "break" },
+          { name: "Study", mins: 25, type: "study" },
+        ];
+        index = 0;
+        syncSessionFromIndex();
+      }
+      start();
+      addBuddy("Let’s go. One session at a time 😌");
+    });
+
+    $("pauseBtn").addEventListener("click", ()=>{
+      if(running) pause();
+      else start();
+    });
+
+    $("resetBtn").addEventListener("click", reset);
+    $("skipBtn").addEventListener("click", skip);
+
+    $("toggleAutoBtn").addEventListener("click", ()=>{
+      autoNext = !autoNext;
+      $("toggleAutoBtn").textContent = `Auto: ${autoNext ? "ON" : "OFF"}`;
+      addBuddy(`Auto-continue is now ${autoNext ? "ON" : "OFF"}.`);
+      save();
+    });
+
+    $("addBtn").addEventListener("click", ()=>{
+      const name = $("subjName").value;
+      const mins = $("subjMins").value;
+      const type = $("subjType").value;
+      addItem(name, mins, type);
+      $("subjName").value = "";
+      renderSchedule();
+      if(schedule.length === 1) syncSessionFromIndex();
+      addBuddy(`Added: ${type==="break" ? "☕" : "📚"} ${name || (type==="break" ? "Break" : "Study")} (${mins} min).`);
+      save();
+    });
+
+    $("addBreakBtn").addEventListener("click", ()=>{
+      addItem("Break", 10, "break");
+      renderSchedule();
+      addBuddy("Added a 10min break ☕");
+      save();
+    });
+
+    $("clearBtn").addEventListener("click", clearAll);
+
+    // Chat
+    function sendChat(text){
+      const msg = (text || "").trim();
+      if(!msg) return;
+      addMe(msg);
+      $("chatInput").value = "";
+      const reply = buddyReply(msg);
+      setTimeout(()=> addBuddy(reply), 180);
+    }
+
+    $("sendBtn").addEventListener("click", ()=> sendChat($("chatInput").value));
+    $("chatInput").addEventListener("keydown", (e)=>{
+      if(e.key === "Enter") sendChat($("chatInput").value);
+    });
+
+    document.querySelectorAll(".tag").forEach(t=>{
+      t.addEventListener("click", ()=> sendChat(t.dataset.preset));
+    });
+
+    // Music
+    $("musicBtn").addEventListener("click", ()=>{
+      if(!playing) playLofi();
+      else stopLofi();
+    });
+
+    $("vol").addEventListener("input", ()=>{
+      const v = parseFloat($("vol").value);
+      if(master) master.gain.value = v;
+    });
+
+    // --------- Init ----------
+    load();
+    $("toggleAutoBtn").textContent = `Auto: ${autoNext ? "ON" : "OFF"}`;
+    renderSchedule();
+    syncSessionFromIndex();
+
+    addBuddy("Hi 😌 I’m your Study Buddy. Add your subjects + breaks on the right, then press Start.");
+    addBuddy("Want a plan? Type: “3-step plan” or click the chip above.");
+
+    // Make sure progress matches restored sessionLeft if loaded
+    if(current()){
+      // If sessionLeft was restored, reflect it
+      const cur = current();
+      sessionTotal = (cur.mins||1)*60;
+      sessionLeft = clamp(sessionLeft || sessionTotal, 0, sessionTotal);
+      updateProgress();
+      $("total").textContent = `Total: ${fmt(sessionTotal)}`;
+    }
+  </script>
 </body>
 </html>
